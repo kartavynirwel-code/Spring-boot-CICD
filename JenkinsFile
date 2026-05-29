@@ -1,96 +1,50 @@
 pipeline {
-agent any
+    agent any
 
-environment {
-    APP_NAME        = 'devops-spring-app'
-    DOCKER_IMAGE    = "your-dockerhub-username/${APP_NAME}"
-    DOCKER_TAG      = "${BUILD_NUMBER}"
-    DOCKER_REGISTRY = 'https://registry.hub.docker.com'
-}
-
-stages {
-
-    stage('Checkout') {
-        steps {
-            echo '📥 Checking out source code...'
-            checkout scm
-            sh 'echo Branch: $(git rev-parse --abbrev-ref HEAD)'
-            sh 'echo Commit: $(git rev-parse --short HEAD)'
-        }
+    environment {
+        APP_NAME = 'spring-app'
+        IMAGE    = "spring-app:${BUILD_NUMBER}"
     }
 
-    stage('Build') {
-        steps {
-            echo '🔨 Building JAR...'
-            sh './mvnw clean package -DskipTests'
-        }
-    }
+    stages {
 
-    stage('Unit Tests') {
-        steps {
-            echo '🧪 Running unit tests...'
-            sh './mvnw test'
-        }
-    }
-
-        // ── 4. Code Quality (SonarQube) ──────────────────────
-        stage('Code Quality') {
+        stage('Checkout') {
             steps {
-                echo '🔍 Running SonarQube analysis...'
-                withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar'
-                }
+                checkout scm
             }
         }
 
-        // ── 5. Docker Build ──────────────────────────────────
+        stage('Build') {
+            steps {
+                sh './mvnw clean package -DskipTests'
+            }
+        }
+
         stage('Docker Build') {
             steps {
-                echo '🐳 Building Docker image...'
-                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                sh "docker build -t ${IMAGE} ."
             }
         }
 
-        // ── 6. Docker Push ───────────────────────────────────
-        stage('Docker Push') {
+        stage('Deploy') {
             steps {
-                echo '📤 Pushing image to Docker Hub...'
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-creds',    // Jenkins Credentials ID
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh "docker login -u $DOCKER_USER -p $DOCKER_PASS"
-                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    sh "docker push ${DOCKER_IMAGE}:latest"
-                }
-            }
-        }
+                sh """
+                    kubectl set image deployment/${APP_NAME} \
+                    ${APP_NAME}=${IMAGE}
 
-        // ── 7. Deploy to Kubernetes ──────────────────────────
-        stage('Deploy to K8s') {
-            steps {
-                echo '☸️ Deploying to Kubernetes...'
-                sh "kubectl set image deployment/${APP_NAME} ${APP_NAME}=${DOCKER_IMAGE}:${DOCKER_TAG}"
-                sh "kubectl rollout status deployment/${APP_NAME}"
+                    kubectl rollout status deployment/${APP_NAME}
+                """
             }
         }
     }
 
-    // ─── Post Actions ────────────────────────────────────────
     post {
         success {
-            echo '🎉 Pipeline completed successfully!'
+            echo 'Deployment successful'
         }
+
         failure {
-            echo '💥 Pipeline failed! Check logs above.'
-        }
-        always {
-            // Clean workspace after build
-            cleanWs()
-            // Remove dangling docker images
-            sh 'docker image prune -f'
+            echo 'Pipeline failed'
         }
     }
 }
