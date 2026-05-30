@@ -1,34 +1,22 @@
 pipeline {
     agent any
-
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-
         stage('Build') {
             steps {
                 sh './mvnw clean package -DskipTests'
             }
         }
-
-        stage('Docker Build') {
+        stage('Docker Build & Deploy') {
             steps {
                 sh '''
-                eval $(minikube docker-env)
-                docker build -t my-boot:${BUILD_NUMBER} .
-                '''
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh '''
-                kubectl set image deployment/spring-app spring-app=my-boot:${BUILD_NUMBER}
-                kubectl rollout status deployment/spring-app
+                    eval $(minikube -p minikube docker-env)
+                    docker build -t my-boot:latest .
+                    kubectl set image deployment/spring-app spring-app=my-boot:latest
                 '''
             }
         }
