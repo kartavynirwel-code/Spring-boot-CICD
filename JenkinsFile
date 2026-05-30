@@ -12,17 +12,29 @@ pipeline {
             }
         }
         stage('Docker Build & Deploy') {
-    steps {
-        sh '''
-            export DOCKER_TLS_VERIFY="1"
-            export DOCKER_HOST="tcp://192.168.49.2:2376"
-            export DOCKER_CERT_PATH="/home/kartavya/.minikube/certs"
-            export MINIKUBE_ACTIVE_DOCKERD="minikube"
-            docker build -t my-boot:latest .
-            kubectl delete deployment spring-app
-            kubectl apply -f K8s/Deployment.yaml
-        '''
+            steps {
+                sh '''
+                    export DOCKER_TLS_VERIFY="1"
+                    export DOCKER_HOST="tcp://192.168.49.2:2376"
+                    export DOCKER_CERT_PATH="/home/kartavya/.minikube/certs"
+                    export MINIKUBE_ACTIVE_DOCKERD="minikube"
+                    docker build -t my-boot:latest .
+                    kubectl delete deployment spring-app
+                    kubectl apply -f K8s/Deployment.yaml
+                '''
+            }
+        }
     }
-}
+    post {
+        success {
+            mail to: 'kartavynirwel77@gmail.com',
+                 subject: "✅ Build #${BUILD_NUMBER} Successful!",
+                 body: "Website update ho gayi!\nBuild: ${BUILD_URL}"
+        }
+        failure {
+            mail to: 'kartavynirwel77@gmail.com',
+                 subject: "❌ Build #${BUILD_NUMBER} Failed!",
+                 body: "Build fail ho gayi!\nCheck karo: ${BUILD_URL}"
+        }
     }
 }
