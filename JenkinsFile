@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        APP_NAME = 'spring-app'
-        IMAGE    = "spring-app:${BUILD_NUMBER}"
-    }
-
     stages {
 
         stage('Checkout') {
@@ -22,29 +17,20 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh "docker build -t ${IMAGE} ."
+                sh '''
+                eval $(minikube docker-env)
+                docker build -t my-boot:${BUILD_NUMBER} .
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                sh """
-                    kubectl set image deployment/${APP_NAME} \
-                    ${APP_NAME}=${IMAGE}
-
-                    kubectl rollout status deployment/${APP_NAME}
-                """
+                sh '''
+                kubectl set image deployment/spring-app spring-app=my-boot:${BUILD_NUMBER}
+                kubectl rollout status deployment/spring-app
+                '''
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Deployment successful'
-        }
-
-        failure {
-            echo 'Pipeline failed'
         }
     }
 }
