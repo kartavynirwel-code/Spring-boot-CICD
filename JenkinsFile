@@ -19,8 +19,8 @@ pipeline {
             export DOCKER_CERT_PATH="/home/kartavya/.minikube/certs"
             export MINIKUBE_ACTIVE_DOCKERD="minikube"
             docker build -t my-boot:latest .
-            kubectl set image deployment/spring-app spring-app=my-boot:latest
-            kubectl rollout restart deployment/spring-app
+            kubectl delete deployment spring-app
+            kubectl apply -f K8s/Deployment.yaml
         '''
     }
 }
