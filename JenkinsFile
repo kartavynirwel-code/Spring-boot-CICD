@@ -12,16 +12,17 @@ pipeline {
             }
         }
         stage('Docker Build & Deploy') {
-            steps {
-                sh '''
-                    export DOCKER_TLS_VERIFY="1"
-                    export DOCKER_HOST="tcp://192.168.49.2:2376"
-                    export DOCKER_CERT_PATH="/home/kartavya/.minikube/certs"
-                    export MINIKUBE_ACTIVE_DOCKERD="minikube"
-                    docker build -t my-boot:latest .
-                    kubectl set image deployment/spring-app spring-app=my-boot:latest
-                '''
-            }
-        }
+    steps {
+        sh '''
+            export DOCKER_TLS_VERIFY="1"
+            export DOCKER_HOST="tcp://192.168.49.2:2376"
+            export DOCKER_CERT_PATH="/home/kartavya/.minikube/certs"
+            export MINIKUBE_ACTIVE_DOCKERD="minikube"
+            docker build -t my-boot:latest .
+            kubectl set image deployment/spring-app spring-app=my-boot:latest
+            kubectl rollout restart deployment/spring-app
+        '''
+    }
+}
     }
 }
